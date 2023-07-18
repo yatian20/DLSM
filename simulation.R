@@ -1,4 +1,7 @@
 #This document shows the R code for our simulation studies (for a particular scenario)
+#You need to download the R file functions.R in your working path.
+source("functions.R")
+
 #The following R code is for only one simulation. You can run the file repeatedly to estimate errors more accurately.
 n <- 200
 T <- 20
