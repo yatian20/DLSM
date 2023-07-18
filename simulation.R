@@ -1,4 +1,5 @@
 #This document shows the R code for our simulation studies (for a particular scenario)
+#The following R code is for only one simulation. You can run the file repeatedly to estimate errors more accurately.
 n <- 200
 T <- 20
 k <- 2
