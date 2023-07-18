@@ -1,6 +1,7 @@
 #This document shows our analysis of the New York Citi Bike data.
 #You need to download the pre-processed data NYbike.rda in your working path.
 load("/NYbike.rda")
+library(ggplot2)
 
 #We use the R function without diagonal data for analyse
 NYbike.est <- PGD.panel2(NYbike1,2)
