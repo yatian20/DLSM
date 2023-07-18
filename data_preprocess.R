@@ -9,6 +9,8 @@ Aug1.del$starttime <- (as.numeric(strptime(Aug1.del$starttime,"%Y-%m-%d %H:%M:%S
 #R package ggmap (need Google map API)
 library(ggmap)
 library(httr)
+library(ggplot2)
+library(ggpubr)
 register_google(key = "********", write = TRUE)
 
 #782 stations and 85854 rides
