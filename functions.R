@@ -147,6 +147,71 @@ PGD.panel <- function(A,k){
   return(list(Z = Z1,alpha = alpha1))
 }
 
+#R function for implementing the initial algorithm (version without diagonal data)
+#Input: longitudinal network data A (n*n*T dimensional array), latent space dimension k (numeric)
+#Output: initial estimates for Z (n*k dimensional matrix) and alpha (n*T dimensional matrix)
+PGD.panel2 <- function(A,k){
+  if(length(dim(A)) == 2)
+    A <- array(as.vector(A),c(nrow(A),nrow(A),1))
+  
+  n <- dim(A)[1]
+  T <- dim(A)[3]
+  N <- apply(A,c(1,2),sum)
+  
+  #initial value
+  p_hat <- sum(N)/(n^2)
+  tau <- sqrt(n * p_hat)
+  eigN <- eigen((N + t(N))/2)
+  P_hat <- eigN$vectors %*% diag(eigN$values * I(eigN$values > tau)) %*% t(eigN$vectors)
+  P_hat <- 0.01*T * I(P_hat < 0.01*T) + P_hat * I(0.01*T <= P_hat & P_hat <= T) + T * I(P_hat > T)
+  Theta_hat <- log(P_hat/T)
+  alpha0 <- solve(n*diag(rep(1,n))+rep(1,n)%*%t(rep(1,n))) %*% Theta_hat %*% rep(1,n)
+  J <- diag(rep(1,n)) - rep(1,n) %*% t(rep(1,n)) / n
+  R <- J %*% (Theta_hat - (alpha0%*%t(rep(1,n)) + rep(1,n)%*%t(alpha0))) %*% J
+  if(k == 1)
+    Z0 <- eigen(R)$vectors %*% rbind(diag(as.matrix(sqrt(eigen(R)$values[1:k]))),matrix(0,n-k,k))
+  else
+    Z0 <- eigen(R)$vectors %*% rbind(diag(sqrt(eigen(R)$values[1:k])),matrix(0,n-k,k))
+  Z.init <- Z0
+  alpha0 <- matrix(rep(alpha0,T),n,T)
+  
+  #gradient descent (BB)
+  eta <- 0.1
+  eta.Z <- eta / (T*svd(Z0)$d[1]^2)
+  eta.a <- eta / (2*n)
+  
+  inner <- exp(Z0 %*% t(Z0)) - diag(diag(exp(Z0 %*% t(Z0))))
+  cum.in <- exp(alpha0) %*% t(exp(alpha0))
+  M <- inner * cum.in
+  Q <- apply(alpha0,2,function(x) apply(inner * exp(outer(x,x,'+')),2,sum))
+  grad0.Z <- (N + t(N) - 2*M) %*% Z0
+  grad0.a <- apply(A,c(1,3),sum) + apply(A,c(2,3),sum) - 2*Q
+  
+  Z1 <- Z0 + eta.Z * grad0.Z
+  Z1 <- J %*% Z1
+  alpha1 <- alpha0 + eta.a * grad0.a
+  
+  for(i in 1:999){
+    inner <- exp(Z1 %*% t(Z1)) - diag(diag(exp(Z1 %*% t(Z1))))
+    cum.in <- exp(alpha1) %*% t(exp(alpha1))
+    M <- inner * cum.in
+    Q <- apply(alpha1,2,function(x) apply(inner * exp(outer(x,x,'+')),2,sum))
+    grad1.Z <- (N + t(N) - 2*M) %*% Z1
+    grad1.a <- apply(A,c(1,3),sum) + apply(A,c(2,3),sum) - 2*Q
+    
+    eta.Z <- -sum(diag(t(Z1-Z0) %*% (grad1.Z-grad0.Z)))/sum(diag(t(grad1.Z-grad0.Z) %*% (grad1.Z-grad0.Z)))
+    eta.a <- -sum(diag(t(alpha1-alpha0) %*% (grad1.a-grad0.a)))/sum(diag(t(grad1.a-grad0.a) %*% (grad1.a-grad0.a)))
+    Z0 <- Z1
+    alpha0 <- alpha1
+    grad0.Z <- grad1.Z
+    grad0.a <- grad1.a
+    Z1 <- Z0 + eta.Z * grad0.Z
+    Z1 <- J %*% Z1
+    alpha1 <- alpha0 + eta.a * grad0.a
+  }
+  return(list(Z = Z1,alpha = alpha1))
+}
+               
 #R function for optimizing the penalized log-likelihood
 #Input: longitudinal network data A (n*n*T dimensional array), tuning parameter lambda (numeric)
 #Output: penalized mle for G (n*n dimensional matrix) and alpha (n*T dimensional matrix)
