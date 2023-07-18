@@ -1,5 +1,5 @@
 #This document shows our analysis of the New York Citi Bike data.
-#You need to download the pre-processed data NYbike.rda in your working path.
+#You need to download the pre-processed data NYbike.rda and the R file functions.R in your working path.
 load("NYbike.rda")
 source("functions.R")
 library(ggplot2)
