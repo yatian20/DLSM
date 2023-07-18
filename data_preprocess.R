@@ -1,7 +1,7 @@
 #This document shows our pre-processing of the New York Citi Bike data.
 #Data is available at https://ride.citibikenyc.com/system-data.
 #Running this R file requires Google map API. You can download NYbike.rda directly to obtain the pre-processed data.
-NYbike <- read.table("/201908-citibike-tripdata.csv",header = TRUE,sep = ',')
+NYbike <- read.table("201908-citibike-tripdata.csv",header = TRUE,sep = ',')
 Aug1 <- NYbike[as.Date(NYbike$starttime) == "2019-08-01",]
 Aug1.del <- Aug1[Aug1$start.station.id != Aug1$end.station.id & Aug1$tripduration > 60 & Aug1$tripduration < 3*60*60,c(2,4,8)]
 Aug1.del$starttime <- (as.numeric(strptime(Aug1.del$starttime,"%Y-%m-%d %H:%M:%S")) - as.numeric(strptime("2019-08-01 00:00:00","%Y-%m-%d %H:%M:%S")))/(60*60)
