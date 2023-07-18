@@ -102,13 +102,6 @@ PGD.panel <- function(A,k){
     Z0 <- eigen(R)$vectors %*% rbind(diag(sqrt(eigen(R)$values[1:k])),matrix(0,n-k,k))
   Z.init <- Z0
   alpha0 <- matrix(rep(alpha0,T),n,T)
-  J <- diag(rep(1,n)) - rep(1,n) %*% t(rep(1,n)) / n
-  R <- J %*% (G.res/T) %*% J
-  if(k == 1)
-    Z0 <- eigen(R)$vectors %*% rbind(diag(as.matrix(sqrt(eigen(R)$values[1:k]))),matrix(0,n-k,k))
-  else
-    Z0 <- eigen(R)$vectors %*% rbind(diag(sqrt(eigen(R)$values[1:k])),matrix(0,n-k,k))
-  Z.init <- Z0
   
   #gradient descent (BB step size)
   eta <- 0.1
