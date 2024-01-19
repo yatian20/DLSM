@@ -24,54 +24,68 @@ Newton <- function(A,Z,alpha){
     for(j in (i+1):k)
       UZ <- cbind(UZ,(D[j]*as.vector(V[j,] %*% t(U[,i]))+D[i]*as.vector(V[i,] %*% t(U[,j])))/sqrt(D[i]^2+D[j]^2))
   
-  DZ <- matrix(0,n^2,n*k)
-  for(i in 1:n)
-    for(j in 1:n){
-      DZ[(i-1)*n+j,(k*(i-1)+1) :(k*i)] <- DZ[(i-1)*n+j,(k*(i-1)+1) :(k*i)] + Z[j,]
-      DZ[(i-1)*n+j,(k*(j-1)+1) :(k*j)] <- DZ[(i-1)*n+j,(k*(j-1)+1) :(k*j)] + Z[i,]
-    }
-  
-  D1 <- matrix(0,n^2,n)
-  for(i in 1:n)
-    for(j in 1:n){
-      D1[(i-1)*n+j,i] <- D1[(i-1)*n+j,i] + 1
-      D1[(i-1)*n+j,j] <- D1[(i-1)*n+j,j] + 1
-    }
-  
-  pl_score <- rep(0,n*k)
-  pl_hess <- matrix(0,n*k,n*k)
+  Ieff <- matrix(0,n*k,n*k)
+  Seff <- rep(0,n*k)
   for(t in 1:T){
     theta <- alpha[,t] %*% t(rep(1,n)) + rep(1,n) %*% t(alpha[,t]) + Z %*% t(Z)
     mu <- exp(theta)
-    Acal <- 2*mu + 2*diag(apply(mu,2,sum))
-    DB <- matrix(0,n*k,n)
+    M <- A[,,t] - mu
+      
+    Lzz <- matrix(0,n*k,n*k)
     for(i in 1:n)
       for(j in 1:n){
         if(i == j){
-          DB[((i-1)*k+1):(i*k),j] <- 2*mu[i,i]*Z[i,]
+          Lzz[((i-1)*k+1):(i*k),((j-1)*k+1):(j*k)] <- 3*mu[i,i] * Z[i,] %*% t(Z[i,])
           for(jj in 1:n)
-            DB[((i-1)*k+1):(i*k),j] <- DB[((i-1)*k+1):(i*k),j] + 2*mu[i,jj]*Z[jj,]
+            Lzz[((i-1)*k+1):(i*k),((j-1)*k+1):(j*k)] <- Lzz[((i-1)*k+1):(i*k),((j-1)*k+1):(j*k)] + mu[i,jj]*Z[jj,] %*% t(Z[jj,])
         }
         else
-          DB[((i-1)*k+1):(i*k),j] <- 2*mu[i,j]*Z[j,]
+          Lzz[((i-1)*k+1):(i*k),((j-1)*k+1):(j*k)] <- mu[i,j] * Z[j,] %*% t(Z[i,])
       }
-    DCD <- matrix(0,n*k,n*k)
+    
+    Lza <- matrix(0,n*k,n)
     for(i in 1:n)
       for(j in 1:n){
         if(i == j){
-          DCD[((i-1)*k+1):(i*k),((j-1)*k+1):(j*k)] <- 2*mu[i,i]* Z[i,] %*% t(Z[i,])
+          Lza[((i-1)*k+1):(i*k),j] <- 3*mu[i,i] * Z[i,]
           for(jj in 1:n)
-            DCD[((i-1)*k+1):(i*k),((j-1)*k+1):(j*k)] <- DCD[((i-1)*k+1):(i*k),((j-1)*k+1):(j*k)] + 2*mu[i,jj]*Z[jj,] %*% t(Z[jj,])
+            Lza[((i-1)*k+1):(i*k),j] <- Lza[((i-1)*k+1):(i*k),j] + mu[i,jj] * Z[jj,] 
         }
         else
-          DCD[((i-1)*k+1):(i*k),((j-1)*k+1):(j*k)] <- 2*mu[i,j] * Z[j,] %*% t(Z[i,])
+          Lza[((i-1)*k+1):(i*k),j] <- mu[i,j] * Z[j,]
       }
-    Vcal <- as.vector(A[,,t] - mu)
-    pl_score <- pl_score + t(DZ) %*% Vcal - DB %*% solve(Acal) %*% (t(D1) %*% Vcal)
-    pl_hess <- pl_hess - DCD + DB %*% solve(Acal) %*% t(DB)
+    
+    Laa <- matrix(0,n,n)
+    for(i in 1:n)
+      for(j in 1:n){
+        if(i == j){
+          Laa[i,j] <- 3*mu[i,i]
+          for(jj in 1:n)
+            Laa[i,j] <- Laa[i,j] + mu[i,jj]
+        }
+        else
+          Laa[i,j] <- mu[i,j]
+      }
+    
+    Lz <- rep(0,n*k)
+    for(i in 1:n){
+      Lz[((i-1)*k+1):(i*k)] <- Z[i,] * M[i,i]
+      for(j in 1:n)
+        Lz[((i-1)*k+1):(i*k)] <- Lz[((i-1)*k+1):(i*k)] + Z[j,] * M[i,j]
+    }
+    
+    La <- rep(0,n)
+    for(i in 1:n){
+      La[i] <- M[i,i]
+      for(j in 1:n)
+        La[i] <- La[i] + M[i,j]
+    }
+    
+    Ieff <- Ieff + Lzz - Lza %*% solve(Laa) %*% t(Lza)
+    Seff <- Seff + Lz - Lza %*% solve(Laa) %*% La
   }
   vz <- as.vector(t(Z))
-  vz <- vz - UZ %*% solve(t(UZ) %*% pl_hess %*% UZ) %*% t(UZ) %*% pl_score
+  vz <- vz + UZ %*% solve(t(UZ) %*% Ieff %*% UZ) %*% t(UZ) %*% Seff
   return(t(matrix(vz,k,n)))
 }
 
@@ -89,13 +103,15 @@ PGD.panel <- function(A,k){
   #initial of initial
   p_hat <- sum(N)/(n^2)
   tau <- sqrt(n * p_hat)
-  eigN <- eigen((N + t(N))/2)
-  P_hat <- eigN$vectors %*% diag(eigN$values * I(eigN$values > tau)) %*% t(eigN$vectors)
+  svdN <- svd(N)
+  P_hat <- svdN$u %*% diag(svdN$d * I(svdN$d > tau)) %*% t(svdN$v)
   P_hat <- 0.01*T * I(P_hat < 0.01*T) + P_hat * I(0.01*T <= P_hat & P_hat <= T) + T * I(P_hat > T)
   Theta_hat <- log(P_hat/T)
   alpha0 <- solve(n*diag(rep(1,n))+rep(1,n)%*%t(rep(1,n))) %*% Theta_hat %*% rep(1,n)
   J <- diag(rep(1,n)) - rep(1,n) %*% t(rep(1,n)) / n
-  R <- J %*% (Theta_hat - (alpha0%*%t(rep(1,n)) + rep(1,n)%*%t(alpha0))) %*% J
+  R <- Theta_hat - (alpha0%*%t(rep(1,n)) + rep(1,n)%*%t(alpha0))
+  R <- eigen(R)$vectors %*% diag(eigen(R)$values * I(eigen(R)$values > 0)) %*% t(eigen(R)$vectors)
+  EV <- eigen(R)$values[1:10]
   if(k == 1)
     Z0 <- eigen(R)$vectors %*% rbind(diag(as.matrix(sqrt(eigen(R)$values[1:k]))),matrix(0,n-k,k))
   else
@@ -112,8 +128,8 @@ PGD.panel <- function(A,k){
   cum.in <- exp(alpha0) %*% t(exp(alpha0))
   M <- inner * cum.in
   Q <- apply(alpha0,2,function(x) apply(inner * exp(outer(x,x,'+')),2,sum))
-  grad0.Z <- (N + t(N) - 2*M) %*% Z0
-  grad0.a <- apply(A,c(1,3),sum) + apply(A,c(2,3),sum) - 2*Q
+  grad0.Z <- (N - M) %*% Z0
+  grad0.a <- apply(A,c(1,3),sum) - Q
   
   Z1 <- Z0 + eta.Z * grad0.Z
   Z1 <- J %*% Z1
@@ -124,8 +140,8 @@ PGD.panel <- function(A,k){
     cum.in <- exp(alpha1) %*% t(exp(alpha1))
     M <- inner * cum.in
     Q <- apply(alpha1,2,function(x) apply(inner * exp(outer(x,x,'+')),2,sum))
-    grad1.Z <- (N + t(N) - 2*M) %*% Z1
-    grad1.a <- apply(A,c(1,3),sum) + apply(A,c(2,3),sum) - 2*Q
+    grad1.Z <- (N - M) %*% Z1
+    grad1.a <- apply(A,c(1,3),sum) - Q
     
     eta.Z <- -sum(diag(t(Z1-Z0) %*% (grad1.Z-grad0.Z)))/sum(diag(t(grad1.Z-grad0.Z) %*% (grad1.Z-grad0.Z)))
     eta.a <- -sum(diag(t(alpha1-alpha0) %*% (grad1.a-grad0.a)))/sum(diag(t(grad1.a-grad0.a) %*% (grad1.a-grad0.a)))
@@ -154,13 +170,15 @@ PGD.panel2 <- function(A,k){
   #initial value
   p_hat <- sum(N)/(n^2)
   tau <- sqrt(n * p_hat)
-  eigN <- eigen((N + t(N))/2)
-  P_hat <- eigN$vectors %*% diag(eigN$values * I(eigN$values > tau)) %*% t(eigN$vectors)
+  svdN <- svd(N)
+  P_hat <- svdN$u %*% diag(svdN$d * I(svdN$d > tau)) %*% t(svdN$v)
   P_hat <- 0.01*T * I(P_hat < 0.01*T) + P_hat * I(0.01*T <= P_hat & P_hat <= T) + T * I(P_hat > T)
   Theta_hat <- log(P_hat/T)
   alpha0 <- solve(n*diag(rep(1,n))+rep(1,n)%*%t(rep(1,n))) %*% Theta_hat %*% rep(1,n)
   J <- diag(rep(1,n)) - rep(1,n) %*% t(rep(1,n)) / n
-  R <- J %*% (Theta_hat - (alpha0%*%t(rep(1,n)) + rep(1,n)%*%t(alpha0))) %*% J
+  R <- Theta_hat - (alpha0%*%t(rep(1,n)) + rep(1,n)%*%t(alpha0))
+  R <- eigen(R)$vectors %*% diag(eigen(R)$values * I(eigen(R)$values > 0)) %*% t(eigen(R)$vectors)
+  EV <- eigen(R)$values[1:10]
   if(k == 1)
     Z0 <- eigen(R)$vectors %*% rbind(diag(as.matrix(sqrt(eigen(R)$values[1:k]))),matrix(0,n-k,k))
   else
@@ -177,8 +195,8 @@ PGD.panel2 <- function(A,k){
   cum.in <- exp(alpha0) %*% t(exp(alpha0))
   M <- inner * cum.in
   Q <- apply(alpha0,2,function(x) apply(inner * exp(outer(x,x,'+')),2,sum))
-  grad0.Z <- (N + t(N) - 2*M) %*% Z0
-  grad0.a <- apply(A,c(1,3),sum) + apply(A,c(2,3),sum) - 2*Q
+  grad0.Z <- (N - M) %*% Z0
+  grad0.a <- apply(A,c(1,3),sum) - Q
   
   Z1 <- Z0 + eta.Z * grad0.Z
   Z1 <- J %*% Z1
@@ -189,8 +207,8 @@ PGD.panel2 <- function(A,k){
     cum.in <- exp(alpha1) %*% t(exp(alpha1))
     M <- inner * cum.in
     Q <- apply(alpha1,2,function(x) apply(inner * exp(outer(x,x,'+')),2,sum))
-    grad1.Z <- (N + t(N) - 2*M) %*% Z1
-    grad1.a <- apply(A,c(1,3),sum) + apply(A,c(2,3),sum) - 2*Q
+    grad1.Z <- (N - M) %*% Z1
+    grad1.a <- apply(A,c(1,3),sum)- Q
     
     eta.Z <- -sum(diag(t(Z1-Z0) %*% (grad1.Z-grad0.Z)))/sum(diag(t(grad1.Z-grad0.Z) %*% (grad1.Z-grad0.Z)))
     eta.a <- -sum(diag(t(alpha1-alpha0) %*% (grad1.a-grad0.a)))/sum(diag(t(grad1.a-grad0.a) %*% (grad1.a-grad0.a)))
@@ -219,13 +237,13 @@ PGD.G <- function(A,lambda){
   #initial value
   p_hat <- sum(N)/(n^2)
   tau <- sqrt(n * p_hat)
-  eigN <- eigen((N + t(N))/2)
-  P_hat <- eigN$vectors %*% diag(eigN$values * I(eigN$values > tau)) %*% t(eigN$vectors)
+  svdN <- svd(N)
+  P_hat <- svdN$u %*% diag(svdN$d * I(svdN$d > tau)) %*% t(svdN$v)
   P_hat <- 0.01*T * I(P_hat < 0.01*T) + P_hat * I(0.01*T <= P_hat & P_hat <= T) + T * I(P_hat > T)
   Theta_hat <- log(P_hat/T)
   alpha0 <- solve(n*diag(rep(1,n))+rep(1,n)%*%t(rep(1,n))) %*% Theta_hat %*% rep(1,n)
   J <- diag(rep(1,n)) - rep(1,n) %*% t(rep(1,n)) / n
-  G0 <- J %*% (Theta_hat - (alpha0%*%t(rep(1,n)) + rep(1,n)%*%t(alpha0))) %*% J
+  G0 <- Theta_hat - (alpha0%*%t(rep(1,n)) + rep(1,n)%*%t(alpha0))
   alpha0 <- matrix(rep(alpha0,T),n,T)
   
   #proximal gradient descent (BB)
@@ -238,8 +256,8 @@ PGD.G <- function(A,lambda){
   cum.in <- exp(alpha0) %*% t(exp(alpha0))
   M <- inner * cum.in
   Q <- apply(alpha0,2,function(x) apply(inner * exp(outer(x,x,'+')),2,sum))
-  grad0.G <- (N + t(N) - 2*M)
-  grad0.a <- apply(A,c(1,3),sum) + apply(A,c(2,3),sum) - 2*Q
+  grad0.G <- (N - M)
+  grad0.a <- apply(A,c(1,3),sum) - Q
   
   alpha1 <- alpha0 + eta.a * grad0.a
   G1.t <- G0 + eta.G * grad0.G
@@ -262,8 +280,8 @@ PGD.G <- function(A,lambda){
     cum.in <- exp(alpha1) %*% t(exp(alpha1))
     M <- inner * cum.in
     Q <- apply(alpha1,2,function(x) apply(inner * exp(outer(x,x,'+')),2,sum))
-    grad1.G <- (N + t(N) - 2*M) 
-    grad1.a <- apply(A,c(1,3),sum) + apply(A,c(2,3),sum) - 2*Q
+    grad1.G <- (N - M)
+    grad1.a <- apply(A,c(1,3),sum) - Q
     
     eta.G <- -sum(diag(t(G1-G0) %*% (grad1.G-grad0.G)))/sum(diag(t(grad1.G-grad0.G) %*% (grad1.G-grad0.G)))
     eta.a <- -sum(diag(t(alpha1-alpha0) %*% (grad1.a-grad0.a)))/sum(diag(t(grad1.a-grad0.a) %*% (grad1.a-grad0.a)))
