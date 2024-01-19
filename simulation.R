@@ -16,16 +16,17 @@ Z <- sqrt(n) * Z / (sum((Z%*%t(Z))^2))^0.25
 #generate alpha
 alpha <- matrix(runif(n*T,-2,0),n,T)
 
-P <- array(NA, dim = c(n,n,T))
-for(t in 1:T)
-  P[,,t] <- exp(outer(alpha[,t],alpha[,t],'+') + Z %*% t(Z))
-   
 #generate A
-A <- rpois(n*n*T,as.vector(P))
-A <- array(A,dim = c(n,n,T))
-  
+  P <- array(0,dim = c(n,n,T))
+  A <- array(0,dim = c(n,n,T))
+  for(t in 1:T){
+    P[,,t] <- exp(outer(alpha[,t],alpha[,t],'+') + Z %*% t(Z))
+    A[,,t] <- matrix(rpois(n*n,as.vector(P[,,t])),n,n)
+    A[,,t][upper.tri(A[,,t])] <- t(A[,,t])[upper.tri(A[,,t])]
+  }
+
 #estimation
-est.c <- PGD.G(A,0.8*sqrt(n*T))
+est.c <- PGD.G(A,0.2*sqrt(n*T))
 G_hat <- est.c$G
 est.nc <- PGD.panel(A,ncol(Z))
 Z_hat <- Newton(A,est.nc$Z,est.nc$alpha)
