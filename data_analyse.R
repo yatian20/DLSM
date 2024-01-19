@@ -4,6 +4,9 @@ load("NYbike.rda")
 source("functions.R")
 library(ggplot2)
 
+#obtain undirected networks
+NYbike1 <- (NYbike1 + aperm(NYbike1,c(2,1,3)))/2
+
 #We use the R function without diagonal data for analyse
 NYbike.est <- PGD.panel2(NYbike1,2)
 
