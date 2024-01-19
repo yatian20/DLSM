@@ -17,13 +17,13 @@ Z <- sqrt(n) * Z / (sum((Z%*%t(Z))^2))^0.25
 alpha <- matrix(runif(n*T,-2,0),n,T)
 
 #generate A
-  P <- array(0,dim = c(n,n,T))
-  A <- array(0,dim = c(n,n,T))
-  for(t in 1:T){
-    P[,,t] <- exp(outer(alpha[,t],alpha[,t],'+') + Z %*% t(Z))
-    A[,,t] <- matrix(rpois(n*n,as.vector(P[,,t])),n,n)
-    A[,,t][upper.tri(A[,,t])] <- t(A[,,t])[upper.tri(A[,,t])]
-  }
+P <- array(0,dim = c(n,n,T))
+A <- array(0,dim = c(n,n,T))
+for(t in 1:T){
+  P[,,t] <- exp(outer(alpha[,t],alpha[,t],'+') + Z %*% t(Z))
+  A[,,t] <- matrix(rpois(n*n,as.vector(P[,,t])),n,n)
+  A[,,t][upper.tri(A[,,t])] <- t(A[,,t])[upper.tri(A[,,t])]
+}
 
 #estimation
 est.c <- PGD.G(A,0.2*sqrt(n*T))
