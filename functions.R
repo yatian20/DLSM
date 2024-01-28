@@ -170,8 +170,8 @@ PGD.panel2 <- function(A,k){
   #initial value
   p_hat <- sum(N)/(n^2)
   tau <- sqrt(n * p_hat)
-  svdN <- svd(N)
-  P_hat <- svdN$u %*% diag(svdN$d * I(svdN$d > tau)) %*% t(svdN$v)
+  eigN <- eigen(N)
+  P_hat <- eigN$vectors %*% diag(eigN$values * I(eigN$values > tau)) %*% t(eigN$vectors)
   P_hat <- 0.01*T * I(P_hat < 0.01*T) + P_hat * I(0.01*T <= P_hat & P_hat <= T) + T * I(P_hat > T)
   Theta_hat <- log(P_hat/T)
   alpha0 <- solve(n*diag(rep(1,n))+rep(1,n)%*%t(rep(1,n))) %*% Theta_hat %*% rep(1,n)
