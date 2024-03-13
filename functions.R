@@ -100,7 +100,8 @@ PGD.panel <- function(A,k){
   T <- dim(A)[3]
   N <- apply(A,c(1,2),sum)
   
-  #initial of initial
+  #initial of initial (double-SVD for merged data)
+  #This is a slight modification from paper to improve finite sample performance
   p_hat <- sum(N)/(n^2)
   tau <- sqrt(n * p_hat)
   svdN <- svd(N)
@@ -167,7 +168,8 @@ PGD.panel2 <- function(A,k){
   T <- dim(A)[3]
   N <- apply(A,c(1,2),sum)
   
-  #initial value
+  #initial of initial (double-SVD for merged data)
+  #This is a slight modification from paper to improve finite sample performance
   p_hat <- sum(N)/(n^2)
   tau <- sqrt(n * p_hat)
   eigN <- eigen(N)
@@ -234,7 +236,7 @@ PGD.G <- function(A,lambda){
   T <- dim(A)[3]
   N <- apply(A,c(1,2),sum)
   
-  #initial value
+  #initial value (double-SVD for merged data)
   p_hat <- sum(N)/(n^2)
   tau <- sqrt(n * p_hat)
   svdN <- svd(N)
