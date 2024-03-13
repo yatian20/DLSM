@@ -236,7 +236,7 @@ PGD.G <- function(A,lambda){
   T <- dim(A)[3]
   N <- apply(A,c(1,2),sum)
   
-  #initial value (double-SVD for merged data)
+  #initial value (USVT for merged data)
   p_hat <- sum(N)/(n^2)
   tau <- sqrt(n * p_hat)
   svdN <- svd(N)
